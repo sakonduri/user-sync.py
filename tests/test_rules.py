@@ -340,5 +340,3 @@ def test_create_umapi_commands_for_directory_user_country_code(rule_processor, l
     mock_directory_user['country'] = 'CA'
     result = rule_processor.create_umapi_commands_for_directory_user(mock_directory_user)
     assert result.do_list[0][1]['country'] == 'CA'
-
-# def test_create_umapi_commands_for_directory_user_countryCode(rule_processor, log_stream, mock_directory_user):
