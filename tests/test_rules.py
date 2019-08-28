@@ -289,3 +289,56 @@ def test_process_stray(rule_processor, log_stream):
         stream.flush()
         actual_logger_output = stream.getvalue()
         assert "Processing Adobe-only users..." in actual_logger_output
+
+
+@pytest.fixture
+def mock_directory_user():
+    return {'identity_type': 'federatedID', 'username': 'nameless@streets.seaofcarag.com',
+            'domain': 'streets.seaofcarag.com',
+            'firstname': 'One', 'lastname': 'Six', 'email': 'nameless@streets.seaofcarag.com',
+            'groups': ['All Sea of Carag'],
+            'country': None, 'member_groups': [],
+            'source_attributes': {'email': 'nameless@streets.seaofcarag.com', 'identity_type': None,
+                                  'username': None,
+                                  'domain': None, 'givenName': 'One', 'sn': 'Six', 'c': 'US'}}
+
+
+def test_create_umapi_commands_for_directory_user_update_username(rule_processor, mock_directory_user):
+    result = rule_processor.create_umapi_commands_for_directory_user(mock_directory_user)
+    assert len(result.do_list) == 1
+
+    mock_directory_user['username'] = 'dummy@streets.seaofcarag.com'
+    result = rule_processor.create_umapi_commands_for_directory_user(mock_directory_user)
+    assert 'update' in result.do_list[1]
+    assert len(result.do_list) == 2
+
+
+def test_create_umapi_commands_for_directory_user_country_code(rule_processor, log_stream, mock_directory_user):
+    stream, logger = log_stream
+    rule_processor.logger = logger
+
+    # Default Country Code as None and Id Type as federatedID. Country as None in mock_directory_user
+    rule_processor.options['default_country_code'] = None
+    result = rule_processor.create_umapi_commands_for_directory_user(mock_directory_user)
+    assert result == None
+    stream.flush()
+    actual_logger_output = stream.getvalue()
+    assert "User cannot be added without a specified country code:" in actual_logger_output
+
+    # Default Country Code as None with Id Type as enterpriseID. Country as None in mock_directory_user
+    rule_processor.options['default_country_code'] = None
+    mock_directory_user['identity_type'] = 'enterpriseID'
+    result = rule_processor.create_umapi_commands_for_directory_user(mock_directory_user)
+    assert result.do_list[0][1]['country'] == 'UD'
+
+    # Having Default Country Code with value 'US'. Country as None in mock_directory_user.
+    rule_processor.options['default_country_code'] = 'US'
+    result = rule_processor.create_umapi_commands_for_directory_user(mock_directory_user)
+    assert result.do_list[0][1]['country'] == 'US'
+
+    # Country as 'CA' in mock_directory_user
+    mock_directory_user['country'] = 'CA'
+    result = rule_processor.create_umapi_commands_for_directory_user(mock_directory_user)
+    assert result.do_list[0][1]['country'] == 'CA'
+
+# def test_create_umapi_commands_for_directory_user_countryCode(rule_processor, log_stream, mock_directory_user):
